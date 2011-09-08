@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
 {-| Declaration of types, bounds and constants for OpenCL 1.0 -}
 module System.OpenCL.Raw.V10.Types where
 
@@ -18,7 +18,6 @@ data Eventc = Eventc
 data Samplerc = Samplerc
 data ImageFormatc = ImageFormatc
 
-type ContextProperties = Ptr CLint
 type PlatformID = Ptr PlatformIDc
 type DeviceID = Ptr DeviceIDc
 type Context = Ptr Contextc
@@ -42,6 +41,8 @@ type ImageFormat = (ChannelOrder,ChannelType)
 newtype ChannelOrder = ChannelOrder CLuint
 newtype ChannelType = ChannelType CLuint
 newtype DeviceType = DeviceType CLbitfield
+newtype ContextProperties = ContextProperties CLuint
+        deriving (Storable)
 newtype ContextInfo = ContextInfo CLuint
 newtype CommandQueueProperties = CommandQueueProperties CLbitfield
 newtype CommandQueueInfo = CommandQueueInfo CLuint
@@ -311,8 +312,8 @@ clContextDevices = ContextInfo 0x1081
 clContextProperties :: ContextInfo 
 clContextProperties = ContextInfo 0x1082
 
-clContextPlatform :: Integer
-clContextPlatform = 0x1084
+clContextPlatform :: ContextProperties
+clContextPlatform = ContextProperties 0x1084
 
 
 

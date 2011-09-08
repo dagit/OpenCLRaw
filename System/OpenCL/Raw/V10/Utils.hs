@@ -31,7 +31,7 @@ fetchPtr thunk = alloca $ \ptr -> do
     then peek ptr
     else throw err
 
-wrapGetInfo :: (CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint) -> CLsizei -> IO (ForeignPtr (), CLsizei)
+wrapGetInfo :: (Storable t, Integral b, Integral a) => (a -> Ptr a1 -> Ptr t -> IO b) -> a -> IO (ForeignPtr a1, t)
 wrapGetInfo raw_infoFn param_size = do
   param_data <- mallocForeignPtrBytes . fromIntegral $ param_size
   valsz <- withForeignPtr param_data $ \param_dataP -> fetchPtr (raw_infoFn param_size param_dataP)
