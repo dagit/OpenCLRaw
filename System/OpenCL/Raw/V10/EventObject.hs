@@ -13,23 +13,23 @@ import System.OpenCL.Raw.V10.Utils
 import Foreign
 
 
-foreign import ccall "clWaitForEvents" raw_clWaitForEvents :: CLuint -> Ptr Event -> IO CLint
+foreign import stdcall "clWaitForEvents" raw_clWaitForEvents :: CLuint -> Ptr Event -> IO CLint
 clWaitForEvents :: [Event] -> IO ()
 clWaitForEvents evts = allocaArray nEvents $ \eventP -> pokeArray eventP evts >> (wrapError $ raw_clWaitForEvents (fromIntegral nEvents) eventP)
     where nEvents = length evts
                             
-foreign import ccall "clGetEventInfo" raw_clGetEventInfo :: Event -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
+foreign import stdcall "clGetEventInfo" raw_clGetEventInfo :: Event -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
 clGetEventInfo :: Event -> EventInfo -> CLsizei -> IO (ForeignPtr (), CLsizei)
 clGetEventInfo obj (EventInfo param_name) param_size = wrapGetInfo (raw_clGetEventInfo obj param_name) param_size
 
-foreign import ccall "clRetainEvent" raw_clRetainEvent :: Event -> IO CLint 
+foreign import stdcall "clRetainEvent" raw_clRetainEvent :: Event -> IO CLint 
 clRetainEvent :: Event -> IO ()
 clRetainEvent evt = wrapError $ raw_clRetainEvent evt
 
-foreign import ccall "clReleaseEvent" raw_clReleaseEvent :: Event -> IO CLint 
+foreign import stdcall "clReleaseEvent" raw_clReleaseEvent :: Event -> IO CLint 
 clReleaseEvent :: Event -> IO ()
 clReleaseEvent evt = wrapError $ raw_clReleaseEvent evt 
 
-foreign import ccall "clGetEventProfilingInfo" raw_clGetEventProfilingInfo :: Event -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
+foreign import stdcall "clGetEventProfilingInfo" raw_clGetEventProfilingInfo :: Event -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
 clGetEventProfilingInfo :: Event -> ProfilingInfo -> CLsizei -> IO (ForeignPtr (), CLsizei)
 clGetEventProfilingInfo obj (ProfilingInfo param_name) param_size = wrapGetInfo (raw_clGetEventProfilingInfo obj param_name) param_size                                

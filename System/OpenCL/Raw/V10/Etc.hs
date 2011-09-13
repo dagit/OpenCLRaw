@@ -7,6 +7,6 @@ where
 import Foreign
 import Foreign.C
 
-foreign import ccall "clGetExtensionFunctionAddress" raw_clGetExtensionFunctionAddress :: CString -> IO (Ptr ())
+foreign import stdcall "clGetExtensionFunctionAddress" raw_clGetExtensionFunctionAddress :: CString -> IO (Ptr ())
 clGetExtensionFunctionAddress :: String -> IO (Ptr ())
 clGetExtensionFunctionAddress str = withCString str raw_clGetExtensionFunctionAddress

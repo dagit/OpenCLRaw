@@ -21,7 +21,7 @@ import qualified Data.ByteString as SBS
 import qualified Data.ByteString.Internal as SBS
 import Control.Exception ( throw )
 
-foreign import ccall "clCreateProgramWithSource" raw_clCreateProgramWithSource :: Context -> CLuint -> Ptr CString -> Ptr CLsizei -> Ptr CLint -> IO Program
+foreign import stdcall "clCreateProgramWithSource" raw_clCreateProgramWithSource :: Context -> CLuint -> Ptr CString -> Ptr CLsizei -> Ptr CLint -> IO Program
 clCreateProgramWithSource :: Context -> String -> IO Program 
 clCreateProgramWithSource ctx source_code = do
     let count = length strings
@@ -31,7 +31,7 @@ clCreateProgramWithSource ctx source_code = do
         withCStringArray0 strings $ (\stringsP -> 
             wrapErrorPtr $ raw_clCreateProgramWithSource ctx (fromIntegral count) stringsP lengthsP))   
 
-foreign import ccall "clCreateProgramWithBinary" raw_clCreateProgramWithBinary :: Context -> CLuint -> Ptr DeviceID -> Ptr CLsizei -> Ptr (Ptr Word8) -> Ptr CLint -> Ptr CLint -> IO Program
+foreign import stdcall "clCreateProgramWithBinary" raw_clCreateProgramWithBinary :: Context -> CLuint -> Ptr DeviceID -> Ptr CLsizei -> Ptr (Ptr Word8) -> Ptr CLint -> Ptr CLint -> IO Program
 clCreateProgramWithBinary :: Context -> [(DeviceID,SBS.ByteString)] ->  IO Program
 clCreateProgramWithBinary context devbin_pair = 
     allocaArray num_devices $ \lengths -> 
@@ -52,17 +52,17 @@ clCreateProgramWithBinary context devbin_pair =
           num_devices = length device_list
           (device_list,bins) = unzip devbin_pair
         
-foreign import ccall "clRetainProgram" raw_clRetainProgram :: Program -> IO CLint
+foreign import stdcall "clRetainProgram" raw_clRetainProgram :: Program -> IO CLint
 clRetainProgram :: Program -> IO () 
 clRetainProgram prog = wrapError $ raw_clRetainProgram prog
 
-foreign import ccall "clReleaseProgram" raw_clReleaseProgram :: Program -> IO CLint
+foreign import stdcall "clReleaseProgram" raw_clReleaseProgram :: Program -> IO CLint
 clReleaseProgram :: Program -> IO () 
 clReleaseProgram prog = wrapError $ raw_clReleaseProgram prog
 
 type BuildProgramCallback = Program -> Ptr () -> IO ()
-foreign import ccall "wrapper" wrapBuildProgramCallback :: BuildProgramCallback -> IO (FunPtr BuildProgramCallback)
-foreign import ccall "clBuildProgram" raw_clBuildProgram :: Program -> CLuint -> Ptr DeviceID -> CString -> FunPtr BuildProgramCallback -> Ptr () -> IO CLint
+foreign import stdcall "wrapper" wrapBuildProgramCallback :: BuildProgramCallback -> IO (FunPtr BuildProgramCallback)
+foreign import stdcall "clBuildProgram" raw_clBuildProgram :: Program -> CLuint -> Ptr DeviceID -> CString -> FunPtr BuildProgramCallback -> Ptr () -> IO CLint
 clBuildProgram :: Program -> [DeviceID] -> String -> BuildProgramCallback -> Ptr () -> IO ()
 clBuildProgram program devices ops pfn_notifyF user_data = 
     allocaArray num_devices $ \device_list -> 
@@ -72,15 +72,15 @@ clBuildProgram program devices ops pfn_notifyF user_data =
         wrapError $ raw_clBuildProgram program (fromIntegral num_devices) device_list options pfn_notify user_data
     where num_devices = length devices   
 
-foreign import ccall "clUnloadCompiler" raw_clUnloadCompiler :: IO CLint
+foreign import stdcall "clUnloadCompiler" raw_clUnloadCompiler :: IO CLint
 clUnloadCompiler :: IO ()
 clUnloadCompiler = wrapError $ raw_clUnloadCompiler
 
-foreign import ccall "clGetProgramInfo" raw_clGetProgramInfo :: Program -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
+foreign import stdcall "clGetProgramInfo" raw_clGetProgramInfo :: Program -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
 clGetProgramInfo :: Program -> ProgramInfo -> CLsizei -> IO (ForeignPtr (), CLsizei)
 clGetProgramInfo program (ProgramInfo param_name) param_value_size = wrapGetInfo (raw_clGetProgramInfo program param_name) param_value_size
 
-foreign import ccall "clGetProgramBuildInfo"  raw_clGetProgramBuildInfo :: Program -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
+foreign import stdcall "clGetProgramBuildInfo"  raw_clGetProgramBuildInfo :: Program -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
 clGetProgramBuildInfo :: Program -> ProgramBuildInfo -> CLsizei -> IO (ForeignPtr (), CLsizei)
 clGetProgramBuildInfo program (ProgramBuildInfo param_name) param_value_size = wrapGetInfo (raw_clGetProgramBuildInfo program param_name) param_value_size
 

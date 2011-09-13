@@ -17,10 +17,9 @@ import System.OpenCL.Raw.V10.Utils
 import Foreign
 import Foreign.C
 
-
 type ContextCallback = (CString -> Ptr () -> CLsizei -> Ptr () -> IO ())
-foreign import ccall "clCreateContext" raw_clCreateContext :: Ptr ContextProperties -> CLuint -> Ptr DeviceID -> FunPtr ContextCallback -> Ptr () -> Ptr CLint -> IO Context
-foreign import ccall "wrapper" wrapCreateContextCallback :: ContextCallback -> IO (FunPtr ContextCallback)
+foreign import stdcall "clCreateContext" raw_clCreateContext :: Ptr ContextProperties -> CLuint -> Ptr DeviceID -> FunPtr ContextCallback -> Ptr () -> Ptr CLint -> IO Context
+foreign import stdcall "wrapper" wrapCreateContextCallback :: ContextCallback -> IO (FunPtr ContextCallback)
 
 clCreateContext :: [ContextProperties] -> [DeviceID] -> Maybe ContextCallback -> Ptr () -> IO Context
 clCreateContext properties devices pfn_notify user_dat =
@@ -37,7 +36,7 @@ clCreateContext properties devices pfn_notify user_dat =
           devicesN = length devices
           
     
-foreign import ccall "clCreateContextFromType" raw_clCreateContextFromType :: Ptr ContextProperties -> CLbitfield -> FunPtr ContextCallback -> Ptr a -> Ptr CLint -> IO Context
+foreign import stdcall "clCreateContextFromType" raw_clCreateContextFromType :: Ptr ContextProperties -> CLbitfield -> FunPtr ContextCallback -> Ptr a -> Ptr CLint -> IO Context
 
 clCreateContextFromType :: [ContextProperties] -> DeviceType -> Maybe ContextCallback -> Ptr () -> IO Context
 clCreateContextFromType properties (DeviceType device_type) pfn_notify user_data = allocaArray (propertiesN+1) $ \propertiesP -> do
@@ -50,15 +49,15 @@ clCreateContextFromType properties (DeviceType device_type) pfn_notify user_data
       Nothing -> call nullFunPtr
     where propertiesN = length properties 
     
-foreign import ccall "clRetainContext" raw_clRetainContext :: Context -> IO CLint
+foreign import stdcall "clRetainContext" raw_clRetainContext :: Context -> IO CLint
 clRetainContext :: Context -> IO ()
 clRetainContext ctx = wrapError (raw_clRetainContext ctx)
 
-foreign import ccall "clReleaseContext" raw_clReleaseContext :: Context -> IO CLint
+foreign import stdcall "clReleaseContext" raw_clReleaseContext :: Context -> IO CLint
 clReleaseContext :: Context -> IO ()
 clReleaseContext ctx = wrapError (raw_clReleaseContext ctx)
 
-foreign import ccall "clGetContextInfo" raw_clGetContextInfo :: Context -> CLuint -> CLsizei -> Ptr a -> Ptr CLsizei -> IO CLint
+foreign import stdcall "clGetContextInfo" raw_clGetContextInfo :: Context -> CLuint -> CLsizei -> Ptr a -> Ptr CLsizei -> IO CLint
 clGetContextInfo :: Context -> ContextInfo -> CLsizei -> IO (ForeignPtr a, CLsizei)
 clGetContextInfo ctx (ContextInfo param_name) param_size = wrapGetInfo (raw_clGetContextInfo ctx param_name) param_size
 

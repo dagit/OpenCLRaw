@@ -57,7 +57,7 @@ library
   frameworks:
   c-sources:
   extensions:
-  extra-libraries:
+  extra-libraries: OpenCL
   extra-lib-dirs:
   includes:
   install-includes:

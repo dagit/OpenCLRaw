@@ -14,17 +14,23 @@ import Control.Applicative
 import Control.Exception ( throw )
 
 
-foreign import ccall "clGetPlatformIDs" raw_clGetPlatformIDs :: CLuint -> Ptr PlatformID -> Ptr CLuint -> IO CLint
+foreign import stdcall "clGetPlatformIDs" raw_clGetPlatformIDs :: CLuint -> Ptr PlatformID -> Ptr CLuint -> IO CLint
 
 
 clGetPlatformIDs :: CLuint -> IO [PlatformID]
-clGetPlatformIDs num_entries = alloca $ \(platforms::Ptr PlatformID) -> alloca $ \(num_platforms::Ptr CLuint) -> do
-  errcode <- ErrorCode <$> raw_clGetPlatformIDs (fromIntegral num_entries) platforms num_platforms
-  if errcode == clSuccess
-      then peek num_platforms >>= \num_platformsN -> peekArray (fromIntegral num_platformsN) platforms
-      else throw errcode
+clGetPlatformIDs num_entries
+  | num_entries < 1 = error "clGetPlatformIDs must have room for at least 1"
+clGetPlatformIDs num_entries =
+  allocaArray (fromIntegral num_entries) $ \(platforms::Ptr PlatformID) ->
+    alloca $ \(num_platforms::Ptr CLuint) -> do
+      errcode <- ErrorCode <$> raw_clGetPlatformIDs (fromIntegral num_entries) platforms num_platforms
+      if errcode == clSuccess
+          then do
+            num <- peek num_platforms
+            peekArray (fromIntegral num) platforms
+          else throw errcode
 
-foreign import ccall "clGetPlatformInfo" raw_clGetPlatformInfo :: PlatformID -> CLuint -> CSize -> Ptr () -> Ptr CSize -> IO CLint 
+foreign import stdcall "clGetPlatformInfo" raw_clGetPlatformInfo :: PlatformID -> CLuint -> CSize -> Ptr () -> Ptr CSize -> IO CLint 
 
 clGetPlatformInfo :: PlatformID -> PlatformInfo -> CLsizei -> Ptr () -> IO CLsizei
 clGetPlatformInfo mem (PlatformInfo param_name) param_value_size param_value =

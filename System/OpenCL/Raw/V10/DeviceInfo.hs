@@ -13,7 +13,7 @@ import Control.Applicative
 import Control.Exception ( throw )
 
 
-foreign import ccall "clGetDeviceIDs" raw_clGetDeviceIDs :: PlatformID -> CLbitfield -> CLuint -> Ptr DeviceID -> Ptr CLuint -> IO CLint
+foreign import stdcall "clGetDeviceIDs" raw_clGetDeviceIDs :: PlatformID -> CLbitfield -> CLuint -> Ptr DeviceID -> Ptr CLuint -> IO CLint
 clGetDeviceIDs :: PlatformID -> DeviceType -> CLuint -> IO [DeviceID]
 clGetDeviceIDs platform (DeviceType device_type) num_entries = alloca $ \devices -> alloca $ \num_devices -> do
   errcode <- ErrorCode <$> raw_clGetDeviceIDs platform device_type num_entries devices num_devices
@@ -21,6 +21,6 @@ clGetDeviceIDs platform (DeviceType device_type) num_entries = alloca $ \devices
     then peek num_devices >>= \num_devicesN -> peekArray (fromIntegral num_devicesN) devices
     else throw errcode
 
-foreign import ccall "clGetDeviceInfo" raw_clGetDeviceInfo :: DeviceID -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
+foreign import stdcall "clGetDeviceInfo" raw_clGetDeviceInfo :: DeviceID -> CLuint -> CLsizei -> Ptr () -> Ptr CLsizei -> IO CLint
 clGetDeviceInfo :: DeviceID -> DeviceInfo -> CLsizei -> IO (ForeignPtr (), CLsizei)
 clGetDeviceInfo obj (DeviceInfo param_name) param_size = wrapGetInfo (raw_clGetDeviceInfo obj param_name) param_size
