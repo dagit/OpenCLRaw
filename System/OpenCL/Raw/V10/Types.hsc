@@ -10,7 +10,6 @@ import Data.Typeable
 #include <CL/cl.h>
 #include <CL/cl_gl.h>
 
-data PlatformIDc   = PlatformIDc
 data DeviceIDc     = DeviceIDc
 data Contextc      = Contextc
 data CommandQueuec = CommandQueuec
@@ -20,7 +19,7 @@ data Kernelc       = Kernelc
 data Eventc        = Eventc
 data Samplerc      = Samplerc
 
-type PlatformID   = Ptr PlatformIDc
+type PlatformID   = IntPtr
 type DeviceID     = Ptr DeviceIDc
 type Context      = Ptr Contextc
 type CommandQueue = Ptr CommandQueuec
@@ -46,7 +45,7 @@ type CLDeviceMemCacheType     = #type cl_device_mem_cache_type
 type CLDeviceLocalMemType     = #type cl_device_local_mem_type
 type CLDeviceExecCapabilities = #type cl_device_exec_capabilities
 type CLCommandQueueProperties = #type cl_command_queue_properties
-type CLContextProperties      = #type cl_context_properties
+type CLContextProperties      = IntPtr
 type CLContextInfo            = #type cl_context_info
 type CLCommandQueueInfo       = #type cl_command_queue_info
 type CLChannelOrder           = #type cl_channel_order
@@ -132,8 +131,8 @@ newtype CommandType = CommandType CLCommandType
   deriving (Eq, Show, Real, Ord, Enum, Num, Integral, Bits, Storable, Typeable)
 newtype ContextInfo = ContextInfo CLContextInfo
   deriving (Eq, Show, Real, Ord, Enum, Num, Integral, Bits, Storable, Typeable)
-newtype ContextProperties = ContextProperties CLContextProperties
-  deriving (Eq, Show, Real, Ord, Enum, Num, Integral, Bits, Storable, Typeable)
+-- | This is a special case to support C99 intptr_t
+type ContextProperties = CLContextProperties
 newtype DeviceExecCapabilities =
   DeviceExecCapabilities CLDeviceExecCapabilities
   deriving (Eq, Show, Real, Ord, Enum, Num, Integral, Bits, Storable, Typeable)
@@ -194,10 +193,9 @@ newtype SamplerInfo = SamplerInfo CLSamplerInfo
 
 -------------------------------------------------------------------------------
 
-#{enum CLbool, 
-  ,clFalse = CL_FALSE
-  ,clTrue  = CL_TRUE
-}
+clFalse, clTrue :: CLbool 
+clFalse = #const CL_FALSE
+clTrue  = #const CL_TRUE
 
 -------------------------------------------------------------------------------
 
@@ -291,9 +289,8 @@ newtype SamplerInfo = SamplerInfo CLSamplerInfo
 
 -------------------------------------------------------------------------------
 
-#{enum ContextProperties, ContextProperties
-  ,clContextPlatform = CL_CONTEXT_PLATFORM
-}
+clContextPlatform :: ContextProperties
+clContextPlatform = #const CL_CONTEXT_PLATFORM
 
 -------------------------------------------------------------------------------
 

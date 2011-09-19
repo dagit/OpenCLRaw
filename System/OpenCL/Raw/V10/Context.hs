@@ -16,10 +16,11 @@ import System.OpenCL.Raw.V10.Types
 import System.OpenCL.Raw.V10.Utils
 import Foreign
 import Foreign.C
+import Control.Monad
 
 -------------------------------------------------------------------------------
 
-type ContextCallback = (CString -> Ptr () -> CLsizei -> Ptr () -> IO ())
+type ContextCallback = CString -> Ptr () -> CLsizei -> Ptr () -> IO ()
 foreign import stdcall "clCreateContext"
   raw_clCreateContext :: Ptr ContextProperties
                       -> CLuint 
@@ -32,24 +33,24 @@ foreign import stdcall "clCreateContext"
 foreign import stdcall "wrapper"
   wrapCreateContextCallback :: ContextCallback -> IO (FunPtr ContextCallback)
 
-clCreateContext :: [ContextProperties] -> [DeviceID]
+clCreateContext :: [PlatformID] -> [DeviceID]
                 -> Maybe ContextCallback -> Ptr () -> IO Context
-clCreateContext properties devices pfn_notify user_dat =
-  allocaArray (propertiesN+1) $ \propertiesP ->
-    allocaArray devicesN $ \devicesP -> do
-      pokeArray0 (ContextProperties 0) propertiesP properties
-      pokeArray devicesP devices
-      let call fn = wrapErrorPtr $
-                      raw_clCreateContext propertiesP
-                                          (fromIntegral devicesN)
-                                          devicesP fn user_dat
-      case pfn_notify of
-        Just notify -> do
-          fptr <- wrapCreateContextCallback notify
-          call fptr
-        Nothing -> call nullFunPtr
-  where propertiesN = length properties
+clCreateContext ps devices pfn_notify user_dat
+  | null ps   = go nullPtr
+  | otherwise = allocaArray propertiesN $ \propertiesP -> do
+    pokeArray0 0 propertiesP contexts
+    go propertiesP
+  where propertiesN = 2*(length ps)+1
         devicesN = length devices
+        contexts = concatMap (\p->clContextPlatform:[p]) ps
+        mbToFunPtr Nothing       = return nullFunPtr
+        mbToFunPtr (Just notify) = wrapCreateContextCallback notify
+        go ctxPtr = do
+          allocaArray devicesN $ \devicesP -> do
+            pokeArray devicesP devices
+            pNotify <- mbToFunPtr pfn_notify
+            wrapErrorPtr $ raw_clCreateContext ctxPtr
+              (fromIntegral devicesN) devicesP pNotify user_dat
 
 -------------------------------------------------------------------------------
 
@@ -59,20 +60,23 @@ foreign import stdcall "clCreateContextFromType"
                               -> FunPtr ContextCallback
                               -> Ptr a -> Ptr CLint -> IO Context
 
-clCreateContextFromType :: [ContextProperties]
+clCreateContextFromType :: [PlatformID]
                         -> DeviceType
                         -> Maybe ContextCallback
                         -> Ptr () -> IO Context
-clCreateContextFromType ps (DeviceType device) mb_notify dat =
-  allocaArray (psN+1) $ \psP -> do
-    pokeArray0 (ContextProperties 0) psP ps
-    let call fn = wrapErrorPtr $ raw_clCreateContextFromType psP device fn dat
-    case mb_notify of
-      Just notify -> do
-        fptr <- wrapCreateContextCallback notify
-        call fptr
-      Nothing -> call nullFunPtr
-    where psN = length ps 
+clCreateContextFromType ps (DeviceType device) mb_notify dat
+  | null ps   = go nullPtr
+  | otherwise = allocaArray psN $ \psPtr -> do
+    pokeArray0 0 psPtr contexts
+    go psPtr
+    where contexts = concatMap (\p->clContextPlatform:[p]) ps
+          psN = 2*(length ps)+1
+          go ctxPtr = do
+            pNotify <- mbToFunPtr mb_notify
+            wrapErrorPtr $ raw_clCreateContextFromType
+                             ctxPtr device pNotify dat
+          mbToFunPtr Nothing       = return nullFunPtr
+          mbToFunPtr (Just notify) = wrapCreateContextCallback notify
 
 -------------------------------------------------------------------------------
 

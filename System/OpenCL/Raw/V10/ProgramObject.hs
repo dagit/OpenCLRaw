@@ -21,22 +21,27 @@ import qualified Data.ByteString as SBS
 import qualified Data.ByteString.Internal as SBS
 import Control.Exception ( throw )
 
-foreign import stdcall "clCreateProgramWithSource" raw_clCreateProgramWithSource :: Context -> CLuint -> Ptr CString -> Ptr CLsizei -> Ptr CLint -> IO Program
+foreign import stdcall "clCreateProgramWithSource"
+  raw_clCreateProgramWithSource :: Context -> CLuint -> Ptr CString
+                                -> Ptr CLsizei -> Ptr CLint -> IO Program
+
 clCreateProgramWithSource :: Context -> String -> IO Program 
 clCreateProgramWithSource ctx source_code = do
     let count = length strings
         strings = lines source_code
         lengths = (fromIntegral . length) <$> strings
-    withArray lengths $ (\lengthsP -> 
-        withCStringArray0 strings $ (\stringsP -> 
-            wrapErrorPtr $ raw_clCreateProgramWithSource ctx (fromIntegral count) stringsP lengthsP))   
+    withArray lengths $ \lengthsP ->
+      withCStringArray0 strings $ \stringsP ->
+        wrapErrorPtr $ raw_clCreateProgramWithSource ctx
+                                                     (fromIntegral count)
+                                                     stringsP lengthsP
 
 foreign import stdcall "clCreateProgramWithBinary" raw_clCreateProgramWithBinary :: Context -> CLuint -> Ptr DeviceID -> Ptr CLsizei -> Ptr (Ptr Word8) -> Ptr CLint -> Ptr CLint -> IO Program
 clCreateProgramWithBinary :: Context -> [(DeviceID,SBS.ByteString)] ->  IO Program
 clCreateProgramWithBinary context devbin_pair = 
-    allocaArray num_devices $ \lengths -> 
+    allocaArray num_devices $ \lengths ->
     allocaArray num_devices $ \binaries ->
-    allocaArray num_devices $ \devices -> 
+    allocaArray num_devices $ \devices ->
     alloca $ \binary_status ->
     alloca $ \errcode_ret -> do
         pokeArray lengths (map (fromIntegral . SBS.length) bins)
@@ -61,15 +66,29 @@ clReleaseProgram :: Program -> IO ()
 clReleaseProgram prog = wrapError $ raw_clReleaseProgram prog
 
 type BuildProgramCallback = Program -> Ptr () -> IO ()
-foreign import stdcall "wrapper" wrapBuildProgramCallback :: BuildProgramCallback -> IO (FunPtr BuildProgramCallback)
-foreign import stdcall "clBuildProgram" raw_clBuildProgram :: Program -> CLuint -> Ptr DeviceID -> CString -> FunPtr BuildProgramCallback -> Ptr () -> IO CLint
-clBuildProgram :: Program -> [DeviceID] -> String -> BuildProgramCallback -> Ptr () -> IO ()
+foreign import stdcall "wrapper"
+  wrapBuildProgramCallback :: BuildProgramCallback
+                           -> IO (FunPtr BuildProgramCallback)
+
+foreign import stdcall "clBuildProgram"
+  raw_clBuildProgram :: Program -> CLuint -> Ptr DeviceID
+                     -> CString -> FunPtr BuildProgramCallback
+                     -> Ptr () -> IO CLint
+
+-- TODO: this function must support devices = [] and pass NULL, see
+-- clCreateContextFromType for an example
+-- also, figure out why ti varies so much from the api usage in my book
+clBuildProgram :: Program -> [DeviceID] -> String
+               -> BuildProgramCallback -> Ptr () -> IO ()
 clBuildProgram program devices ops pfn_notifyF user_data = 
-    allocaArray num_devices $ \device_list -> 
-    withCString ops $ \options -> do 
-        pokeArray device_list devices
-        pfn_notify <- wrapBuildProgramCallback pfn_notifyF
-        wrapError $ raw_clBuildProgram program (fromIntegral num_devices) device_list options pfn_notify user_data
+  allocaArray num_devices $ \device_list ->
+  withCString ops $ \options -> do
+    pokeArray device_list devices
+    pfn_notify <- wrapBuildProgramCallback pfn_notifyF
+    wrapError $ raw_clBuildProgram program
+                                   (fromIntegral num_devices)
+                                   device_list options pfn_notify
+                                   user_data
     where num_devices = length devices   
 
 foreign import stdcall "clUnloadCompiler" raw_clUnloadCompiler :: IO CLint
