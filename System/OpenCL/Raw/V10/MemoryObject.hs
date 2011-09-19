@@ -31,17 +31,29 @@ foreign import stdcall "clCreateBuffer" raw_clCreateBuffer :: Context -> CLbitfi
 clCreateBuffer :: Context -> MemFlags -> CLsizei -> Ptr () -> IO Mem
 clCreateBuffer ctx (MemFlags flags) size host_ptr = wrapErrorPtr $ raw_clCreateBuffer ctx flags size host_ptr 
               
-foreign import stdcall "clCreateImage2D" raw_clCreateImage2D :: Context -> CLbitfield -> Ptr CLuint -> CLsizei -> CLsizei -> CLsizei -> Ptr () -> Ptr CLint -> IO Mem
-clCreateImage2D :: Context -> MemFlags -> ImageFormat -> CLsizei -> CLsizei -> CLsizei -> Ptr () -> IO Mem
-clCreateImage2D ctx (MemFlags memflags) (ChannelOrder corder, ChannelType ctype) image_width image_height image_row_pitch host_ptr = allocaArray 2 $ \image_format -> do
-    pokeArray image_format [corder,ctype] 
-    wrapErrorPtr $ raw_clCreateImage2D ctx memflags image_format image_width image_height image_row_pitch host_ptr
+foreign import stdcall "clCreateImage2D"
+  raw_clCreateImage2D :: Context -> CLMemFlags -> Ptr ImageFormat
+                      -> CLsizei -> CLsizei -> CLsizei
+                      -> Ptr a -> Ptr CLint -> IO Mem
+
+clCreateImage2D :: Context -> MemFlags -> ImageFormat
+                -> CLsizei -> CLsizei -> CLsizei -> Ptr () -> IO Mem
+clCreateImage2D ctx (MemFlags memflags) image_format image_width image_height image_row_pitch host_ptr =
+  alloca $ \imgFmtPtr -> do
+    poke imgFmtPtr image_format
+    wrapErrorPtr $ raw_clCreateImage2D ctx memflags imgFmtPtr image_width image_height image_row_pitch host_ptr
                         
-foreign import stdcall "clCreateImage3D" raw_clCreateImage3D :: Context -> CLbitfield -> Ptr CLuint -> CLsizei -> CLsizei -> CLsizei -> CLsizei -> CLsizei -> Ptr () -> Ptr CLint -> IO Mem
-clCreateImage3D :: Context -> MemFlags -> ImageFormat -> CLsizei -> CLsizei -> CLsizei -> CLsizei -> CLsizei -> Ptr () -> IO Mem
-clCreateImage3D ctx (MemFlags memflags) (ChannelOrder corder, ChannelType ctype) image_width image_height image_depth image_row_pitch image_slice_pitch host_ptr = allocaArray 2 $ \image_format -> do
-    pokeArray image_format [corder,ctype] 
-    wrapErrorPtr $ raw_clCreateImage3D ctx memflags image_format image_width image_height image_depth image_row_pitch image_slice_pitch host_ptr 
+foreign import stdcall "clCreateImage3D"
+  raw_clCreateImage3D :: Context -> CLMemFlags -> Ptr ImageFormat
+                      -> CLsizei -> CLsizei -> CLsizei
+                      -> CLsizei -> CLsizei -> Ptr a -> Ptr CLint -> IO Mem
+clCreateImage3D :: Context -> MemFlags -> ImageFormat
+                -> CLsizei -> CLsizei -> CLsizei -> CLsizei -> CLsizei
+                -> Ptr () -> IO Mem
+clCreateImage3D ctx (MemFlags memflags) image_format image_width image_height image_depth image_row_pitch image_slice_pitch host_ptr =
+  alloca $ \imgFmtPtr -> do
+    poke imgFmtPtr image_format
+    wrapErrorPtr $ raw_clCreateImage3D ctx memflags imgFmtPtr image_width image_height image_depth image_row_pitch image_slice_pitch host_ptr 
                         
 foreign import stdcall "clRetainMemObject" raw_clRetainMemObject :: Mem -> IO CLint
 clRetainMemObject :: Mem -> IO () 
@@ -57,7 +69,7 @@ clGetSupportedImageFormats ctx (MemFlags flags) (MemObjectType image_type) =
   allocaArray 512 $ \image_formats -> do
     num_image_formats <- fetchPtr $ raw_clGetSupportedImageFormats ctx flags image_type 512 image_formats
     image_formatsN <- peekArray (fromIntegral num_image_formats*2) image_formats
-    let sift (a:b:cs) = (ChannelOrder a, ChannelType b) : sift cs
+    let sift (a:b:cs) = ImageFormat (ChannelOrder a) (ChannelType b) : sift cs
         sift [] = []
     return $ sift image_formatsN
 

@@ -17,49 +17,86 @@ import System.OpenCL.Raw.V10.Utils
 import Foreign
 import Foreign.C
 
+-------------------------------------------------------------------------------
+
 type ContextCallback = (CString -> Ptr () -> CLsizei -> Ptr () -> IO ())
-foreign import stdcall "clCreateContext" raw_clCreateContext :: Ptr ContextProperties -> CLuint -> Ptr DeviceID -> FunPtr ContextCallback -> Ptr () -> Ptr CLint -> IO Context
-foreign import stdcall "wrapper" wrapCreateContextCallback :: ContextCallback -> IO (FunPtr ContextCallback)
+foreign import stdcall "clCreateContext"
+  raw_clCreateContext :: Ptr ContextProperties
+                      -> CLuint 
+                      -> Ptr DeviceID
+                      -> FunPtr ContextCallback
+                      -> Ptr ()
+                      -> Ptr CLint
+                      -> IO Context
 
-clCreateContext :: [ContextProperties] -> [DeviceID] -> Maybe ContextCallback -> Ptr () -> IO Context
+foreign import stdcall "wrapper"
+  wrapCreateContextCallback :: ContextCallback -> IO (FunPtr ContextCallback)
+
+clCreateContext :: [ContextProperties] -> [DeviceID]
+                -> Maybe ContextCallback -> Ptr () -> IO Context
 clCreateContext properties devices pfn_notify user_dat =
-    allocaArray (propertiesN+1) $ \propertiesP -> allocaArray devicesN $ \devicesP -> do
-        pokeArray0 (ContextProperties 0) propertiesP properties
-        pokeArray devicesP devices
-        let call fn = wrapErrorPtr $ raw_clCreateContext propertiesP (fromIntegral devicesN) devicesP fn user_dat
-        case pfn_notify of
-          Just notify -> do
-            fptr <- wrapCreateContextCallback notify
-            call fptr
-          Nothing -> call nullFunPtr
-    where propertiesN = length properties
-          devicesN = length devices
-          
-    
-foreign import stdcall "clCreateContextFromType" raw_clCreateContextFromType :: Ptr ContextProperties -> CLbitfield -> FunPtr ContextCallback -> Ptr a -> Ptr CLint -> IO Context
+  allocaArray (propertiesN+1) $ \propertiesP ->
+    allocaArray devicesN $ \devicesP -> do
+      pokeArray0 (ContextProperties 0) propertiesP properties
+      pokeArray devicesP devices
+      let call fn = wrapErrorPtr $
+                      raw_clCreateContext propertiesP
+                                          (fromIntegral devicesN)
+                                          devicesP fn user_dat
+      case pfn_notify of
+        Just notify -> do
+          fptr <- wrapCreateContextCallback notify
+          call fptr
+        Nothing -> call nullFunPtr
+  where propertiesN = length properties
+        devicesN = length devices
 
-clCreateContextFromType :: [ContextProperties] -> DeviceType -> Maybe ContextCallback -> Ptr () -> IO Context
-clCreateContextFromType properties (DeviceType device_type) pfn_notify user_data = allocaArray (propertiesN+1) $ \propertiesP -> do
-    pokeArray0 (ContextProperties 0) propertiesP properties
-    let call fn = wrapErrorPtr $ raw_clCreateContextFromType propertiesP device_type fn user_data
-    case pfn_notify of
+-------------------------------------------------------------------------------
+
+foreign import stdcall "clCreateContextFromType"
+  raw_clCreateContextFromType :: Ptr ContextProperties
+                              -> CLbitfield
+                              -> FunPtr ContextCallback
+                              -> Ptr a -> Ptr CLint -> IO Context
+
+clCreateContextFromType :: [ContextProperties]
+                        -> DeviceType
+                        -> Maybe ContextCallback
+                        -> Ptr () -> IO Context
+clCreateContextFromType ps (DeviceType device) mb_notify dat =
+  allocaArray (psN+1) $ \psP -> do
+    pokeArray0 (ContextProperties 0) psP ps
+    let call fn = wrapErrorPtr $ raw_clCreateContextFromType psP device fn dat
+    case mb_notify of
       Just notify -> do
         fptr <- wrapCreateContextCallback notify
         call fptr
       Nothing -> call nullFunPtr
-    where propertiesN = length properties 
-    
-foreign import stdcall "clRetainContext" raw_clRetainContext :: Context -> IO CLint
+    where psN = length ps 
+
+-------------------------------------------------------------------------------
+
+foreign import stdcall "clRetainContext"
+  raw_clRetainContext :: Context -> IO CLint
+
 clRetainContext :: Context -> IO ()
 clRetainContext ctx = wrapError (raw_clRetainContext ctx)
 
-foreign import stdcall "clReleaseContext" raw_clReleaseContext :: Context -> IO CLint
+-------------------------------------------------------------------------------
+
+foreign import stdcall "clReleaseContext"
+  raw_clReleaseContext :: Context -> IO CLint
+
 clReleaseContext :: Context -> IO ()
 clReleaseContext ctx = wrapError (raw_clReleaseContext ctx)
 
-foreign import stdcall "clGetContextInfo" raw_clGetContextInfo :: Context -> CLuint -> CLsizei -> Ptr a -> Ptr CLsizei -> IO CLint
-clGetContextInfo :: Context -> ContextInfo -> CLsizei -> IO (ForeignPtr a, CLsizei)
-clGetContextInfo ctx (ContextInfo param_name) param_size = wrapGetInfo (raw_clGetContextInfo ctx param_name) param_size
+-------------------------------------------------------------------------------
+ 
+foreign import stdcall "clGetContextInfo"
+  raw_clGetContextInfo :: Context -> CLuint -> CLsizei
+                       -> Ptr a -> Ptr CLsizei -> IO CLint
 
-
-
+clGetContextInfo :: Context -> ContextInfo
+                 -> CLsizei -> IO (ForeignPtr a, CLsizei)
+clGetContextInfo ctx (ContextInfo param_name) param_size =
+  wrapGetInfo (raw_clGetContextInfo ctx param_name) param_size
