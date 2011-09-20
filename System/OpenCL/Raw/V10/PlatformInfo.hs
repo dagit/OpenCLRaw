@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, ScopedTypeVariables #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-| Conforms to section 4.1 of the OpenCL 1.0 specification -}
 module System.OpenCL.Raw.V10.PlatformInfo (
     clGetPlatformIDs
@@ -9,6 +9,7 @@ import System.OpenCL.Raw.V10.Types
 import System.OpenCL.Raw.V10.Errors
 import System.OpenCL.Raw.V10.Utils
 import Foreign
+import Foreign.C
 import Control.Applicative
 import Control.Exception ( throw )
 
@@ -16,25 +17,29 @@ import Control.Exception ( throw )
 foreign import stdcall "clGetPlatformIDs"
   raw_clGetPlatformIDs :: CLuint -> Ptr PlatformID -> Ptr CLuint -> IO CLint
 
-clGetPlatformIDs :: CLuint -> IO [PlatformID]
-clGetPlatformIDs num_entries
-  | num_entries < 1 = error "clGetPlatformIDs must have room for at least 1"
-clGetPlatformIDs num_entries =
-  allocaArray (fromIntegral num_entries) $ \(platforms::Ptr PlatformID) ->
-    alloca $ \(num_platforms::Ptr CLuint) -> do
-      errcode <- ErrorCode <$> raw_clGetPlatformIDs (fromIntegral num_entries)
-                                                    platforms num_platforms
-      if errcode == clSuccess
-          then do
-            num <- peek num_platforms
-            peekArray (fromIntegral num) platforms
-          else throw errcode
+clGetPlatformIDs :: IO [PlatformID]
+clGetPlatformIDs = do
+  alloca $ \numPtr -> do
+    -- first we query to find out how big of a buffer is needed
+    checkErr (raw_clGetPlatformIDs 0 nullPtr numPtr) $ do
+      num <- peek numPtr
+      allocaArray (fromIntegral num) $ \platformsPtr -> do
+        -- now we are ready to query the result
+        checkErr (raw_clGetPlatformIDs num platformsPtr numPtr) $ do
+          peekArray (fromIntegral num) platformsPtr
+  where checkErr f g = do
+          errcode <- ErrorCode <$> f
+          if errcode == clSuccess then g else throw errcode
 
 foreign import stdcall "clGetPlatformInfo"
-  raw_clGetPlatformInfo :: PlatformID -> CLuint -> CLsizei -> Ptr a
+  raw_clGetPlatformInfo :: PlatformID -> CLuint -> CLsizei -> Ptr CChar 
                         -> Ptr CLsizei -> IO CLint 
 
-clGetPlatformInfo :: PlatformID -> PlatformInfo -> CLsizei
-                  -> Ptr CLsizei -> IO CLsizei
-clGetPlatformInfo mem (PlatformInfo param_name) param_value_size param_value =
-  fetchPtr $ raw_clGetPlatformInfo mem param_name param_value_size param_value
+clGetPlatformInfo :: PlatformID -> PlatformInfo -> IO String
+clGetPlatformInfo pid (PlatformInfo name) = do
+  -- first we query to find out how big of a buffer is needed
+  n <- fetchPtr $ raw_clGetPlatformInfo pid name 0 nullPtr
+  allocaBytes (fromIntegral n) $ \valuePtr -> do
+    -- now we are ready to query the result
+    _ <- fetchPtr $ raw_clGetPlatformInfo pid name n valuePtr
+    peekCString valuePtr
