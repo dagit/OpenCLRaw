@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, CPP #-}
 {-| Declaration of types, bounds and constants for OpenCL 1.0 -}
 module System.OpenCL.Raw.V10.Types where
 
@@ -7,8 +7,15 @@ import Control.Exception
 import Data.Typeable
 
 #let alignment t = "%lu", (unsigned long)offsetof(struct {char x__; t (y__); }, y__)
-#include <CL/cl.h>
-#include <CL/cl_gl.h>
+
+#ifdef __APPLE__
+  #include <OpenCL/opencl.h>
+  #include <OpenCL/cl_gl.h>
+  #include <OpenCL/cl_gl_ext.h>
+#else
+  #include <CL/cl.h>
+  #include <CL/cl_gl.h>
+#endif
 
 data DeviceIDc     = DeviceIDc
 data Contextc      = Contextc
@@ -54,7 +61,8 @@ type CLMemFlags               = #type cl_mem_flags
 type CLMemObjectType          = #type cl_mem_object_type
 type CLMemInfo                = #type cl_mem_info
 type CLImageInfo              = #type cl_image_info
-type CLBufferCreateType       = #type cl_buffer_create_type
+-- This appeared in 1.1
+-- type CLBufferCreateType       = #type cl_buffer_create_type
 type CLAddressingMode         = #type cl_addressing_mode
 type CLFilterMode             = #type cl_filter_mode
 type CLSamplerInfo            = #type cl_sampler_info
@@ -72,7 +80,8 @@ type CLProfilingInfo          = #type cl_profiling_info
 type CLGLObjectType           = #type cl_gl_object_type
 type CLGLTextureInfo          = #type cl_gl_texture_info
 type CLGLPlatformInfo         = #type cl_gl_platform_info
-type CLGLContextInfo          = #type cl_gl_context_info
+-- Doesn't seem to exist on OSX 10.6
+-- type CLGLContextInfo          = #type cl_gl_context_info
 
 data ImageFormat = ImageFormat
   { imageChannelOrder    :: ChannelOrder
@@ -97,6 +106,7 @@ type ImageFormatp = Ptr ImageFormat
 -- | Note: These data constructor names differ from those in the spec.  Should
 -- be 'origin' and 'size' but with the way Haskell records work, I thought
 -- maybe it was better to prefix them with 'buffer'.
+{-  Doesn't appear to exist on OSX 10.6
 data BufferRegion = BufferRegion
   { bufferOrigin :: CLsizei
   , bufferSize   :: CLsizei
@@ -113,7 +123,7 @@ instance Storable BufferRegion where
   poke ptr val = do
     (#poke cl_buffer_region, origin) ptr (bufferOrigin val)
     (#poke cl_buffer_region, size) ptr (bufferSize val)
-
+-}
 newtype AddressingMode = AddressingMode CLAddressingMode
   deriving (Eq, Show, Real, Ord, Enum, Num, Integral, Bits, Storable, Typeable)
 newtype BuildStatus = BuildStatus CLBuildStatus

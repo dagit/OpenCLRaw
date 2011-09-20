@@ -57,7 +57,9 @@ library
   frameworks:
   c-sources:
   extensions:
-  extra-libraries: OpenCL
+  if(!os(darwin))
+    extra-libraries: OpenCL
+  frameworks: OpenCL
   extra-lib-dirs:
   includes:
   install-includes:
