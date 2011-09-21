@@ -25,7 +25,7 @@ clGetPlatformIDs = do
       num <- peek numPtr
       allocaArray (fromIntegral num) $ \platformsPtr -> do
         -- now we are ready to query the result
-        checkErr (raw_clGetPlatformIDs num platformsPtr numPtr) $ do
+        checkErr (raw_clGetPlatformIDs num platformsPtr nullPtr) $ do
           peekArray (fromIntegral num) platformsPtr
   where checkErr f g = do
           errcode <- ErrorCode <$> f
@@ -41,5 +41,5 @@ clGetPlatformInfo pid (PlatformInfo name) = do
   n <- fetchPtr $ raw_clGetPlatformInfo pid name 0 nullPtr
   allocaBytes (fromIntegral n) $ \valuePtr -> do
     -- now we are ready to query the result
-    _ <- fetchPtr $ raw_clGetPlatformInfo pid name n valuePtr
+    _ <- raw_clGetPlatformInfo pid name n valuePtr nullPtr
     peekCString valuePtr
